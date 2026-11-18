@@ -21,6 +21,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Resolve release tag
+        id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            tag="$GITHUB_REF_NAME"
+          else
+            ver="$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts | head -n 1)"
+            tag="v${ver}"
+            if gh release view "$tag" >/dev/null 2>&1; then
+              tag="v${ver}-b${GITHUB_RUN_NUMBER}"
+            fi
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Resolved release tag: $tag"
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
@@ -35,7 +52,7 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Prepare Release Signing Keystore
+      - name: Load Permanent Release Signing Keystore
         env:
           KEYSTORE_B64: ${{ secrets.MTUNE_KEYSTORE_BASE64 }}
           KS_PASS: ${{ secrets.MTUNE_KEYSTORE_PASSWORD }}
@@ -43,26 +60,15 @@ jobs:
           KEY_PASS: ${{ secrets.MTUNE_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          if [ -n "$KEYSTORE_B64" ]; then
-            printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/mtune-release.keystore"
-            echo "MTUNE_KEYSTORE_PASSWORD=$KS_PASS" >> "$GITHUB_ENV"
-            echo "MTUNE_KEY_ALIAS=$KEY_ALIAS_ENV" >> "$GITHUB_ENV"
-            echo "MTUNE_KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
-          else
-            keytool -genkeypair -v \
-              -keystore "$RUNNER_TEMP/mtune-release.keystore" \
-              -storepass mtune-release-pass \
-              -keypass mtune-release-pass \
-              -alias mtune \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -dname "CN=MTune, OU=Mobile, O=MTune, L=Local, S=Local, C=US"
-            echo "MTUNE_KEYSTORE_PASSWORD=mtune-release-pass" >> "$GITHUB_ENV"
-            echo "MTUNE_KEY_ALIAS=mtune" >> "$GITHUB_ENV"
-            echo "MTUNE_KEY_PASSWORD=mtune-release-pass" >> "$GITHUB_ENV"
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::Permanent MTUNE_KEYSTORE_BASE64 secret is missing! Refusing to sign with an ephemeral key so updates never break."
+            exit 1
           fi
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/mtune-release.keystore"
           echo "MTUNE_KEYSTORE=$RUNNER_TEMP/mtune-release.keystore" >> "$GITHUB_ENV"
+          echo "MTUNE_KEYSTORE_PASSWORD=$KS_PASS" >> "$GITHUB_ENV"
+          echo "MTUNE_KEY_ALIAS=$KEY_ALIAS_ENV" >> "$GITHUB_ENV"
+          echo "MTUNE_KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
 
       - name: Build MTune Mobile & TV Release APKs
         env:
@@ -72,15 +78,17 @@ jobs:
         run: ./gradlew --no-daemon :app:assembleRelease :tv:assembleRelease
 
       - name: Package & Hash MTune APKs
+        env:
+          TAG: ${{ steps.ver.outputs.tag }}
         run: |
           set -euo pipefail
           mkdir -p dist
           for f in app/build/outputs/apk/release/*.apk; do
             abi=$(basename "$f" .apk | sed -e 's/^app-//' -e 's/-release$//')
-            cp "$f" "dist/MTune-${abi}.apk"
+            cp "$f" "dist/MTune-${TAG}-${abi}.apk"
           done
           if [ -f tv/build/outputs/apk/release/tv-release.apk ]; then
-            cp tv/build/outputs/apk/release/tv-release.apk "dist/MTune-TV.apk"
+            cp tv/build/outputs/apk/release/tv-release.apk "dist/MTune-TV-${TAG}.apk"
           fi
           (cd dist && sha256sum *.apk > SHA256SUMS.txt)
           ls -lh dist/
@@ -88,15 +96,15 @@ jobs:
       - name: Upload MTune APK Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: MTune-APKs
+          name: MTune-APKs-${{ steps.ver.outputs.tag }}
           path: dist/
 
       - name: Publish GitHub Release
         if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v1.1.0-mtune-{0}', github.run_number) }}
-          name: MTune ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v1.1.0 (Build {0})', github.run_number) }}
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: MTune ${{ steps.ver.outputs.tag }}
           files: dist/*
           generate_release_notes: true
 
