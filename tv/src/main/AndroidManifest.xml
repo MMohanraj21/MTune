@@ -21,7 +21,7 @@
         android:banner="@drawable/tv_banner"
         android:allowBackup="false"
         android:supportsRtl="true"
-        android:theme="@style/Theme.MTuneTv"
+        android:theme="@style/Theme.OpenTuneTv"
         android:networkSecurityConfig="@xml/network_security_config">
 
         <activity
