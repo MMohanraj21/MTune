@@ -66,7 +66,7 @@ object DiscordRpc {
 
     private const val GATEWAY = "wss://gateway.discord.gg/?v=10&encoding=json"
     private const val API = "https://discord.com/api/v10"
-    private const val PROJECT_URL = "https://github.com/justshivv/Opentune"
+    private const val PROJECT_URL = "https://github.com/MMohanraj21/MTune"
     private const val APP_NAME = "MTune"
     private const val LABEL_MAX = 32
     private const val TEXT_MAX = 128

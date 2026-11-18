@@ -1847,39 +1847,28 @@ private fun settingsSections(
                         icon = Icons.Rounded.Info,
                     )
                 },
-                Entry("MTune community", "github discord community addons developer") { CommunityBanner() },
-                Entry("Support MTune", "donate upi pay money tip support developer") {
-                    NavRow("Support MTune", { supportDialog = true }, summary = "A small thank-you helps keep MTune going", icon = Icons.Rounded.Favorite)
-                },
                 Entry("Star on GitHub", "star github rate like") {
                     NavRow("Star on GitHub", {
-                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, com.opentune.ui.components.Support.REPO.toUri())) }
+                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/MMohanraj21/MTune".toUri())) }
                     }, summary = "Helps other people find MTune", icon = Icons.Rounded.Star)
                 },
                 Entry("Source code", "github open source license gpl") {
                     NavRow("Source code", {
+                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/MMohanraj21/MTune".toUri())) }
+                    }, summary = "github.com/MMohanraj21/MTune · GPL v3", icon = Icons.Rounded.Code)
+                },
+                Entry("Open-source license", "gpl license attribution opentune") {
+                    NavRow("Open-source license", {
                         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/justshivv/Opentune".toUri())) }
-                    }, summary = "github.com/justshivv/Opentune · GPL v3", icon = Icons.Rounded.Code)
+                    }, summary = "GNU GPL v3 · Based on OpenTune", icon = Icons.Rounded.Info)
                 },
-                Entry("justshivv", "github developer creator justshivv") {
+                Entry("MMohanraj21", "github developer maintainer mmohanraj21") {
                     SettingRow(
-                        "justshivv",
+                        "MMohanraj21",
                         icon = null,
-                        leading = { Artwork("https://avatars.githubusercontent.com/u/78946189?v=4", Modifier.size(28.dp), CircleShape) },
+                        leading = { Artwork("https://github.com/MMohanraj21.png", Modifier.size(28.dp), CircleShape) },
                         trailing = {
-                            IconButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/justshivv".toUri())) } }) {
-                                Icon(githubLogo, "GitHub", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        },
-                    )
-                },
-                Entry("aerluc", "github developer aerluc") {
-                    SettingRow(
-                        "aerluc",
-                        icon = null,
-                        leading = { Artwork("https://avatars.githubusercontent.com/u/122277259?v=4", Modifier.size(28.dp), CircleShape) },
-                        trailing = {
-                            IconButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/aerluc".toUri())) } }) {
+                            IconButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/MMohanraj21".toUri())) } }) {
                                 Icon(githubLogo, "GitHub", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         },

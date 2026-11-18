@@ -36,8 +36,8 @@ import java.util.concurrent.TimeUnit
 
 /** Ways to back the project: a star on GitHub, or money over UPI. */
 object Support {
-    val REPO: String get() = com.opentune.data.config.RemoteConfig.current.github
-    const val UPI_ID = "whoosthis@axl"
+    val REPO: String get() = "https://github.com/MMohanraj21/MTune"
+    const val UPI_ID = ""
     private const val PAYEE = "MTune"
     private const val NOTE = "Support MTune"
     /** Suggested amounts, in rupees. */
@@ -61,13 +61,8 @@ object Support {
         }
     }
 
-    val DISCORD: String get() = com.opentune.data.config.RemoteConfig.current.discord
+    val DISCORD: String get() = "https://github.com/MMohanraj21/MTune"
 
-    /**
-     * The two monthly invitations: a GitHub star after five days of use, and the
-     * Discord after ten. Each comes at most once every 30 days, and never within
-     * two weeks of the other, so they take turns rather than arriving together.
-     */
     enum class Invite(internal val daysBefore: Int, internal val askedKey: String, internal val doneKey: String) {
         STAR(5, "askedAt", "done"),
         DISCORD(10, "discordAskedAt", "discordDone"),
@@ -83,17 +78,8 @@ object Support {
         p.edit { putLong("lastDay", day); putInt("days", p.getInt("days", 0) + 1) }
     }
 
-    /** The invitation that's due now, if any; the star first when both are. */
-    fun due(context: Context, now: Long = System.currentTimeMillis()): Invite? {
-        if (!com.opentune.data.config.RemoteConfig.current.communityPrompts) return null
-        val p = prefs(context)
-        val other = Invite.entries.maxOf { p.getLong(it.askedKey, 0) }
-        return Invite.entries.firstOrNull { invite ->
-            val asked = p.getLong(invite.askedKey, 0)
-            shouldAsk(p.getBoolean(invite.doneKey, false), p.getInt("days", 0), asked, now, invite.daysBefore) &&
-                (other == asked || now - other >= APART_MS)
-        }
-    }
+    /** Disabled in MTune so upstream prompts do not interrupt playback. */
+    fun due(context: Context, now: Long = System.currentTimeMillis()): Invite? = null
 
     internal fun shouldAsk(done: Boolean, days: Int, askedAt: Long, now: Long, daysBefore: Int = Invite.STAR.daysBefore): Boolean =
         !done && days >= daysBefore && now - askedAt >= MIN_GAP_MS
