@@ -1,0 +1,4 @@
+• Fixed Vivo Origin Island (Atomic Island / Live Capsule) playback controls (Play, Pause, Skip next, Skip previous)
+• Explicitly granted full Player.Commands to external OEM controllers (resolving Media3 1.11 untrusted controller restrictions)
+• Added ACTION_MEDIA_BUTTON intent filter to PlaybackService for instant hardware and system UI event routing
+• Added SYSTEM_ALERT_WINDOW permission for Origin Island interactive floating capsule overlays

@@ -14,6 +14,7 @@ import android.media.AudioManager
 import android.media.audiofx.LoudnessEnhancer
 import android.net.Uri
 import android.os.SystemClock
+import android.view.KeyEvent
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -810,16 +811,64 @@ class PlaybackService : MediaLibraryService() {
      * list they were shown in; [CarLibrary.resolve] queues that list.
      */
     private val sessionCallback = object : MediaLibrarySession.Callback {
-        /** Every controller (notification, Android Auto, Bluetooth) also gets Like and Shuffle. */
+        /** Every controller (notification, Android Auto, Bluetooth, Vivo Origin Island) also gets full player controls, Like and Shuffle. */
         override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult {
-            val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
+            val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
                 .add(LIKE_COMMAND)
                 .add(SHUFFLE_COMMAND)
                 .build()
+            val playerCommands = Player.Commands.Builder()
+                .addAllCommands()
+                .build()
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
-                .setAvailableSessionCommands(commands)
+                .setAvailableSessionCommands(sessionCommands)
+                .setAvailablePlayerCommands(playerCommands)
                 .setMediaButtonPreferences(mediaButtons())
                 .build()
+        }
+
+        @OptIn(UnstableApi::class)
+        override fun onMediaButtonEvent(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            intent: Intent,
+        ): Boolean {
+            val keyEvent = if (android.os.Build.VERSION.SDK_INT >= 33) {
+                intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT, KeyEvent::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT)
+            }
+            if (keyEvent != null && keyEvent.action == KeyEvent.ACTION_DOWN) {
+                val player = session.player
+                when (keyEvent.keyCode) {
+                    KeyEvent.KEYCODE_MEDIA_PLAY -> {
+                        player.play()
+                        return true
+                    }
+                    KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                        player.pause()
+                        return true
+                    }
+                    KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_HEADSETHOOK -> {
+                        if (player.isPlaying) player.pause() else player.play()
+                        return true
+                    }
+                    KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                        if (player.hasNextMediaItem()) player.seekToNextMediaItem()
+                        return true
+                    }
+                    KeyEvent.KEYCODE_MEDIA_PREVIOUS, KeyEvent.KEYCODE_MEDIA_REWIND -> {
+                        if (player.hasPreviousMediaItem()) player.seekToPreviousMediaItem()
+                        return true
+                    }
+                    KeyEvent.KEYCODE_MEDIA_STOP -> {
+                        player.stop()
+                        return true
+                    }
+                }
+            }
+            return super.onMediaButtonEvent(session, controller, intent)
         }
 
         override fun onCustomCommand(
@@ -834,6 +883,11 @@ class PlaybackService : MediaLibraryService() {
                     LibraryStore.setLiked(song, !LibraryStore.isLiked(song.videoId))
                 }
                 ACTION_SHUFFLE -> player.shuffleModeEnabled = !player.shuffleModeEnabled
+                "action_play", "play" -> player.play()
+                "action_pause", "pause" -> player.pause()
+                "action_next", "next", "skip_to_next" -> if (player.hasNextMediaItem()) player.seekToNextMediaItem()
+                "action_previous", "previous", "skip_to_previous" -> if (player.hasPreviousMediaItem()) player.seekToPreviousMediaItem()
+                "action_play_pause", "play_pause", "toggle_playback" -> if (player.isPlaying) player.pause() else player.play()
                 else -> return Futures.immediateFuture(SessionResult(SessionError.ERROR_NOT_SUPPORTED))
             }
             refreshButtons()

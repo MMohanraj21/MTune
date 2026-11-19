@@ -22,6 +22,8 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- High performance mode asks to be left out of battery saving, so frames aren't throttled. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Floating window and capsule interaction for Vivo Origin Island / Xiaomi / Dynamic Island. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <!-- Taps and buzzes at the strength set in Settings. -->
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Reverb runs as an auxiliary effect on the output mix. -->
@@ -220,6 +222,7 @@
                      browse Home, Recent and Library and search. -->
                 <action android:name="androidx.media3.session.MediaLibraryService" />
                 <action android:name="android.media.browse.MediaBrowserService" />
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </service>
 
