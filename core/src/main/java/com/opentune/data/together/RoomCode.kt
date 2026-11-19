@@ -33,8 +33,8 @@ class RoomCode private constructor(val raw: String) {
     /** The plain text of a [seal]ed message, or null if it isn't one of this room's. */
     fun open(sealed: String): String? = gcmOpen(key, tag, sealed)
 
-    /** A link that opens the room in OpenTune. */
-    val appLink: String get() = "opentune://together/$raw"
+    /** A link that opens the room in MTune. */
+    val appLink: String get() = "mtune://together/$raw"
     val link: String get() = "https://justshivv.github.io/Opentune/together/#code=$raw"
 
     override fun equals(other: Any?) = other is RoomCode && other.raw == raw
@@ -56,7 +56,7 @@ class RoomCode private constructor(val raw: String) {
             val value = text.trim()
             val uri = runCatching { java.net.URI(value) }.getOrNull()
             val candidate = when {
-                uri?.scheme.equals("opentune", ignoreCase = true) && uri?.host == "together" -> uri.path.trim('/')
+                (uri?.scheme.equals("mtune", ignoreCase = true) || uri?.scheme.equals("opentune", ignoreCase = true)) && uri?.host == "together" -> uri.path.trim('/')
                 uri?.scheme == "https" && uri.host == "justshivv.github.io" && uri.path.trimEnd('/') == "/Opentune/together" ->
                     uri.fragment?.takeIf { it.startsWith("code=") }?.removePrefix("code=") ?: return null
                 uri?.scheme != null -> return null
@@ -70,7 +70,7 @@ class RoomCode private constructor(val raw: String) {
         /** A valid invite URL or printed code in a shared message. */
         fun find(text: String?): RoomCode? {
             text ?: return null
-            Regex("""(?:https://|opentune://)\S+""").findAll(text).forEach { match ->
+            Regex("""(?:https://|mtune://|opentune://)\S+""").findAll(text).forEach { match ->
                 parse(match.value.trimEnd('.', ',', ')'))?.let { return it }
             }
             val group = "[$ALPHABET]{4}"

@@ -108,7 +108,7 @@ fun LinkDeviceScreen(
         scanning = false
         val view = Intent(Intent.ACTION_VIEW, text.toUri())
         if (!com.opentune.ui.account.PairingLinks.receive(view)) {
-            if (com.opentune.ui.Links.parse(text) != null || text.startsWith("opentune://")) com.opentune.ui.Links.receive(view)
+            if (com.opentune.ui.Links.parse(text) != null || text.startsWith("mtune://") || text.startsWith("opentune://")) com.opentune.ui.Links.receive(view)
             else Pills.error("That isn't an MTune code", context)
         }
     }

@@ -1,0 +1,5 @@
+• Vivo Dynamic Island / OriginOS live capsule support via com.luna.music package integration.
+• Official MTune Discord community link added: https://discord.gg/RmQT3mX7h.
+• Complete MTune re-branding across all dialogs, screens, and translations.
+• Full support for mtune:// deep link schemes.
+• Permanent RSA-2048 keystore signing for error-free in-app updates.

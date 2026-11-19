@@ -61,7 +61,7 @@ object Support {
         }
     }
 
-    val DISCORD: String get() = "https://github.com/MMohanraj21/MTune"
+    val DISCORD: String get() = "https://discord.gg/RmQT3mX7h"
 
     enum class Invite(internal val daysBefore: Int, internal val askedKey: String, internal val doneKey: String) {
         STAR(5, "askedAt", "done"),

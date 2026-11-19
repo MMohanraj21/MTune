@@ -43,10 +43,18 @@ object Tr {
     }
 
     /** [english] in the current language. */
-    fun t(english: String): String = if (table.isEmpty()) english else table[english] ?: english
+    fun t(english: String): String {
+        val cleanKey = if (english.contains("Based on OpenTune")) english else english.replace("OpenTune", "MTune").replace("Opentune", "MTune")
+        if (table.isEmpty()) return cleanKey
+        val translated = table[cleanKey] ?: table[english] ?: table[cleanKey.replace("MTune", "OpenTune")] ?: cleanKey
+        return if (translated.contains("Based on OpenTune")) translated else translated.replace("OpenTune", "MTune").replace("Opentune", "MTune")
+    }
 
     /** [template] in the current language, with `{0}`, `{1}`… replaced by [args] in order. */
-    fun f(template: String, vararg args: Any?): String = fill(t(template), args)
+    fun f(template: String, vararg args: Any?): String {
+        val filled = fill(t(template), args)
+        return if (filled.contains("Based on OpenTune")) filled else filled.replace("OpenTune", "MTune").replace("Opentune", "MTune")
+    }
 
     internal fun fill(text: String, args: Array<out Any?>): String {
         if (args.isEmpty() || '{' !in text) return text

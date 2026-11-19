@@ -116,7 +116,7 @@ class RemoteInvite internal constructor(
         get() {
             val name = PairingCrypto.encode(tvName.toByteArray(UTF_8))
             val body = "1|$host|$port|$tvId|$name|${SecureChannel.hex(id)}|${PairingCrypto.encode(token)}|$expires"
-            return "opentune://remote/#" + PairingCrypto.encode(body.toByteArray(UTF_8))
+            return "mtune://remote/#" + PairingCrypto.encode(body.toByteArray(UTF_8))
         }
 
     companion object {
@@ -134,7 +134,12 @@ class RemoteInvite internal constructor(
 
         /** The invite in a scanned [text], or null when it isn't one, has run out, or points anywhere but the home network. */
         fun parse(text: String, now: Long = System.currentTimeMillis()): RemoteInvite? = runCatching {
-            val payload = text.trim().substringAfter("opentune://remote/#", "").ifEmpty { return null }
+            val trimmed = text.trim()
+            val payload = when {
+                trimmed.startsWith("mtune://remote/#") -> trimmed.removePrefix("mtune://remote/#")
+                trimmed.startsWith("opentune://remote/#") -> trimmed.removePrefix("opentune://remote/#")
+                else -> return null
+            }.ifEmpty { return null }
             require(payload.length in 40..1024)
             val f = String(PairingCrypto.decode(payload), UTF_8).split('|')
             require(f.size == 8 && f[0] == "1")

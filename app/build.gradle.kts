@@ -11,11 +11,11 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.mtune.app"
+        applicationId = "com.luna.music"
         minSdk = 26
         targetSdk = 36
-        versionCode = 48
-        versionName = "1.1.1"
+        versionCode = 49
+        versionName = "1.1.2"
         // This version's store changelog, shown as What's new when a release
         // goes out before the app's own notes for it are written.
         val changelog = rootProject.file("fastlane/metadata/android/en-US/changelogs/$versionCode.txt")

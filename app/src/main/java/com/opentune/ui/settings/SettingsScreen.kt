@@ -539,7 +539,7 @@ private fun settingsSections(
             message = runCatching {
                 withContext(Dispatchers.IO) {
                     val doc = buildJsonObject {
-                        put("app", "OpenTune")
+                        put("app", "MTune")
                         put("version", 1)
                         put("settings", AppSettings.exportJson())
                         put("history", History.exportJson())
@@ -1684,7 +1684,7 @@ private fun settingsSections(
                     NavRow("Wrapped", onOpenWrapped, summary = "Your listening as an animated story", icon = Icons.Rounded.AutoAwesome)
                 },
                 Entry("Export data", "backup json") {
-                    NavRow("Export data", { exporter.launchSafely(context, "opentune-backup.json") }, summary = "Settings, history, likes and playlists, as one JSON file", icon = Icons.Rounded.Upload)
+                    NavRow("Export data", { exporter.launchSafely(context, "mtune-backup.json") }, summary = "Settings, history, likes and playlists, as one JSON file", icon = Icons.Rounded.Upload)
                 },
                 Entry("Import data", "restore json") {
                     NavRow("Import data", { importer.launchSafely(context, arrayOf("application/json")) }, summary = "Replaces the settings, history, likes and playlists on this device", icon = Icons.Rounded.Download)
@@ -1847,6 +1847,7 @@ private fun settingsSections(
                         icon = Icons.Rounded.Info,
                     )
                 },
+                Entry("MTune community", "github discord community addons developer") { CommunityBanner() },
                 Entry("Star on GitHub", "star github rate like") {
                     NavRow("Star on GitHub", {
                         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/MMohanraj21/MTune".toUri())) }

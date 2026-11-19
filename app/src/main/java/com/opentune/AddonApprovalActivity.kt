@@ -16,8 +16,8 @@ class AddonApprovalActivity : ComponentActivity() {
         FirstPartyAddonAuth.init(this)
         val uri = intent?.data
         val id = uri?.getQueryParameter("id").orEmpty()
-        if (uri?.scheme != "opentune" || uri.host != "addon-approve" || !id.matches(Regex("[A-Za-z0-9_-]{43}"))) { finish(); return }
-        val waiting = AlertDialog.Builder(this).setTitle(com.opentune.i18n.Tr.t("Verify OpenTune")).setMessage(com.opentune.i18n.Tr.t("Checking this device and browser request…"))
+        if ((uri?.scheme != "mtune" && uri?.scheme != "opentune") || uri?.host != "addon-approve" || !id.matches(Regex("[A-Za-z0-9_-]{43}"))) { finish(); return }
+        val waiting = AlertDialog.Builder(this).setTitle(com.opentune.i18n.Tr.t("Verify MTune")).setMessage(com.opentune.i18n.Tr.t("Checking this device and browser request…"))
             .setNegativeButton("Cancel") { _, _ -> finish() }.setOnCancelListener { finish() }.show()
         lifecycleScope.launch {
             try {
@@ -25,11 +25,12 @@ class AddonApprovalActivity : ComponentActivity() {
                 if (isFinishing) return@launch
                 waiting.dismiss()
                 if (info.optBoolean("approved")) { showResult("This browser request was already approved."); return@launch }
-                // OpenTune for computers pairs the same way, under its own origin.
-                val desktop = info.getString("origin") == DESKTOP_ORIGIN
-                val asker = if (desktop) "OpenTune on your computer" else "your web player"
-                val dialog = AlertDialog.Builder(this@AddonApprovalActivity).setTitle(if (desktop) "Allow OpenTune for computers?" else "Allow OpenTune web player?")
-                    .setMessage("${if (desktop) "OpenTune for computers" else info.getString("origin")}\n\nCode: ${info.getString("code")}\n\nOnly allow if you started this request and this exact code is visible in $asker. Access lasts up to 12 hours.")
+                // MTune for computers pairs the same way, under its own origin.
+                val origin = info.getString("origin")
+                val desktop = origin == DESKTOP_ORIGIN || origin == "mtune-desktop://app"
+                val asker = if (desktop) "MTune on your computer" else "your web player"
+                val dialog = AlertDialog.Builder(this@AddonApprovalActivity).setTitle(if (desktop) "Allow MTune for computers?" else "Allow MTune web player?")
+                    .setMessage("${if (desktop) "MTune for computers" else origin}\n\nCode: ${info.getString("code")}\n\nOnly allow if you started this request and this exact code is visible in $asker. Access lasts up to 12 hours.")
                     .setNegativeButton("Deny") { _, _ -> finish() }.setPositiveButton("Allow", null)
                     .setOnCancelListener { finish() }.create()
                 dialog.setOnShowListener {
@@ -38,7 +39,7 @@ class AddonApprovalActivity : ComponentActivity() {
                         setOnClickListener {
                             isEnabled = false
                             lifecycleScope.launch {
-                                try { FirstPartyAddonAuth.approveBrowser(id); dialog.dismiss(); showResult(if (desktop) "Computer approved. Return to OpenTune on your computer." else "Browser approved. Return to the web player.") }
+                                try { FirstPartyAddonAuth.approveBrowser(id); dialog.dismiss(); showResult(if (desktop) "Computer approved. Return to MTune on your computer." else "Browser approved. Return to the web player.") }
                                 catch (e: Exception) { dialog.dismiss(); showResult(e.message ?: "Approval failed") }
                             }
                         }
@@ -49,10 +50,10 @@ class AddonApprovalActivity : ComponentActivity() {
         }
     }
     private fun showResult(message: String) {
-        AlertDialog.Builder(this).setTitle(com.opentune.i18n.Tr.t("OpenTune verification")).setMessage(com.opentune.i18n.Tr.t(message))
+        AlertDialog.Builder(this).setTitle(com.opentune.i18n.Tr.t("MTune verification")).setMessage(com.opentune.i18n.Tr.t(message))
             .setPositiveButton("Done") { _, _ -> finish() }.setOnCancelListener { finish() }.show()
     }
 }
 
-/** The origin OpenTune for computers pairs under (services/lossless-addon/auth.mjs). */
+/** The origin MTune for computers pairs under (services/lossless-addon/auth.mjs). */
 private const val DESKTOP_ORIGIN = "opentune-desktop://app"

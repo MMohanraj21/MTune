@@ -72,6 +72,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="mtune" android:host="addon-approve" />
                 <data android:scheme="opentune" android:host="addon-approve" />
             </intent-filter>
         </activity>
@@ -88,7 +89,7 @@
                  activity starting over. -->
             <!-- The TV home screen's row of apps. -->
             <!-- Open YouTube Music and YouTube links: songs, playlists, albums, channels.
-                 Not autoVerify: these domains aren't ours, so the user picks OpenTune. -->
+                 Not autoVerify: these domains aren't ours, so the user picks MTune. -->
             <intent-filter tools:ignore="AppLinkWarning">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -104,6 +105,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="mtune" android:host="pair" />
                 <data android:scheme="opentune" android:host="pair" />
             </intent-filter>
             <intent-filter tools:ignore="AppLinkWarning">
@@ -112,11 +114,12 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="justshivv.github.io" android:pathPrefix="/Opentune/pair/" />
             </intent-filter>
-            <!-- Invites to a Listen together room: opentune://together/<code>. -->
+            <!-- Invites to a Listen together room: mtune://together/<code>. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="mtune" android:host="together" />
                 <data android:scheme="opentune" android:host="together" />
             </intent-filter>
             <!-- GitHub Pages cannot publish assetlinks.json at the domain root;
