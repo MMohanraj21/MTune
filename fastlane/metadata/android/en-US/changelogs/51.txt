@@ -1,0 +1,4 @@
+• Integrated com.tencent.qqmusic (QQ Music) package ID for native Vivo Origin Island, Atomic Walkman, and Lockscreen dynamic media capsule compatibility
+• Full Player.Commands permission for external OEM controllers
+• Instant ACTION_MEDIA_BUTTON hardware and touch routing in PlaybackService
+• SYSTEM_ALERT_WINDOW support for interactive floating capsule controls

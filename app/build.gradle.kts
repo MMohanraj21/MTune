@@ -11,11 +11,11 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.luna.music"
+        applicationId = "com.tencent.qqmusic"
         minSdk = 26
         targetSdk = 36
-        versionCode = 50
-        versionName = "1.1.3"
+        versionCode = 51
+        versionName = "1.1.4"
         // This version's store changelog, shown as What's new when a release
         // goes out before the app's own notes for it are written.
         val changelog = rootProject.file("fastlane/metadata/android/en-US/changelogs/$versionCode.txt")
