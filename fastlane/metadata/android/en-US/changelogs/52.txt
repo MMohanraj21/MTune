@@ -1,0 +1,4 @@
+• Full Android 9 (Pie, API 28) support for "Export compatible downloads": copies downloads to shared storage at Music/MTune as AAC (M4A) or FLAC so other music players and system media scanners discover them
+• Automatic MediaScannerConnection indexing on Android 9 and older with runtime storage permission workflow
+• Automatic file deletion upon download cancellation/removal on Android 9
+• Maintained native Vivo Origin Island, Atomic Walkman, and Lockscreen dynamic capsule support (com.tencent.qqmusic) and TV edition APK builds

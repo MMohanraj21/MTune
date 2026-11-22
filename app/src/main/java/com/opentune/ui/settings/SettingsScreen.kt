@@ -1,5 +1,6 @@
 package com.opentune.ui.settings
 
+import android.Manifest
 import android.content.Context
 import com.opentune.ui.components.launchSafely
 import android.content.Intent
@@ -563,6 +564,23 @@ private fun settingsSections(
                 doc["library"]?.let(LibraryStore::importJson)
                 "Imported settings, history, likes and playlists."
             }.getOrElse { com.opentune.i18n.Tr.f("Import failed: {0}", it.message) }
+        }
+    }
+
+    val storageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            AppSettings.updateLibrary { it.copy(exportDownloads = true) }
+            scope.launch {
+                val (copied, skipped) = com.opentune.data.download.Downloads.exportExisting(context.applicationContext)
+                val note = buildString {
+                    append(if (copied == 1) "1 song" else com.opentune.i18n.Tr.f("{0} songs", copied))
+                    append(" copied to Music/MTune")
+                    if (skipped > 0) append(com.opentune.i18n.Tr.f("; {0} in a format other apps can't play, download them again to export", skipped))
+                }
+                if (copied > 0 || skipped > 0) com.opentune.data.Pills.done(note, context)
+            }
+        } else {
+            com.opentune.data.Pills.error("Storage permission is required to save downloads to Music/MTune", context)
         }
     }
 
@@ -1593,25 +1611,32 @@ private fun settingsSections(
                 Entry("Export compatible downloads", "music folder other apps files save export mp4 aac copy") {
                     ToggleRow(
                         "Export compatible downloads",
-                        lib.exportDownloads && com.opentune.data.download.DownloadExport.supported,
+                        lib.exportDownloads,
                         { v ->
-                            AppSettings.updateLibrary { it.copy(exportDownloads = v) }
-                            // Turned on: the songs already downloaded go into the Music folder too.
-                            if (v) scope.launch {
-                                val (copied, skipped) = com.opentune.data.download.Downloads.exportExisting(context.applicationContext)
-                                val note = buildString {
-                                    append(if (copied == 1) "1 song" else com.opentune.i18n.Tr.f("{0} songs", copied))
-                                    append(" copied to Music/MTune")
-                                    if (skipped > 0) append(com.opentune.i18n.Tr.f("; {0} in a format other apps can't play, download them again to export", skipped))
+                            if (v) {
+                                if (com.opentune.data.download.DownloadExport.needsStoragePermission &&
+                                    !com.opentune.data.download.DownloadExport.hasStoragePermission(context)
+                                ) {
+                                    storageLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                                } else {
+                                    AppSettings.updateLibrary { it.copy(exportDownloads = true) }
+                                    scope.launch {
+                                        val (copied, skipped) = com.opentune.data.download.Downloads.exportExisting(context.applicationContext)
+                                        val note = buildString {
+                                            append(if (copied == 1) "1 song" else com.opentune.i18n.Tr.f("{0} songs", copied))
+                                            append(" copied to Music/MTune")
+                                            if (skipped > 0) append(com.opentune.i18n.Tr.f("; {0} in a format other apps can't play, download them again to export", skipped))
+                                        }
+                                        if (copied > 0 || skipped > 0) com.opentune.data.Pills.done(note, context)
+                                    }
                                 }
-                                if (copied > 0 || skipped > 0) com.opentune.data.Pills.done(note, context)
+                            } else {
+                                AppSettings.updateLibrary { it.copy(exportDownloads = false) }
                             }
                         },
-                        summary = if (com.opentune.data.download.DownloadExport.supported)
-                            "Also saves each download to Music/MTune as AAC (M4A) or FLAC, so other music apps can play it"
-                        else "Needs Android 10 or newer",
+                        summary = "Also saves each download to Music/MTune as AAC (M4A) or FLAC, so other music apps can play it",
                         icon = Icons.Rounded.DownloadDone,
-                        enabled = com.opentune.data.download.DownloadExport.supported,
+                        enabled = true,
                     )
                 },
             ),
