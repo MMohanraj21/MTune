@@ -1,0 +1,5 @@
+• Fix download stalling on Wi-Fi on Android 9: resolved false metered detection when connected to mobile hotspots and metered Wi-Fi
+• Relaxed WorkManager constraint for user downloads so downloads trigger immediately on any connected Wi-Fi or hotspot
+• Added automatic network listener to resume and dispatch queued downloads as soon as Wi-Fi reconnects
+• Added graceful stream fallback to ensure downloads succeed even if specific M4A formats are unavailable
+• Maintained full Android 9 Music/MTune export compatibility and Vivo Origin Island / Atomic Walkman support (com.tencent.qqmusic)

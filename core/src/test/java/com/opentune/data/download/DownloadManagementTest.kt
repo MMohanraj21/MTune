@@ -84,4 +84,11 @@ class DownloadManagementTest {
         assertEquals(setOf(songs[1].videoId), selected.active)
         assertEquals(3, selected.stored.size)
     }
+
+    @Test fun waitingForWifiRespectsSettingAndConnection() {
+        com.opentune.data.settings.AppSettings.updateLibrary { it.copy(downloadWifiOnly = false) }
+        assertFalse(Downloads.waitingForWifi(context))
+        com.opentune.data.settings.AppSettings.updateLibrary { it.copy(downloadWifiOnly = true) }
+        assertEquals(!Downloads.isWifiConnected(context), Downloads.waitingForWifi(context))
+    }
 }

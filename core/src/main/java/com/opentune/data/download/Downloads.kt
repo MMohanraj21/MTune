@@ -4,6 +4,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.ServiceInfo
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.Constraints
@@ -138,6 +142,22 @@ object Downloads {
                 runCatching { f.write(json.encodeToString(serializer, map)) }
             }
         }
+        runCatching {
+            val cm = context.getSystemService(ConnectivityManager::class.java)
+            if (cm != null) {
+                val request = NetworkRequest.Builder()
+                    .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                    .addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET)
+                    .build()
+                cm.registerNetworkCallback(request, object : ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: Network) {
+                        if (AppSettings.library.value.downloadWifiOnly) {
+                            requeueWaiting(context)
+                        }
+                    }
+                })
+            }
+        }
     }
 
     private var saved: com.opentune.data.SavedFile? = null
@@ -192,11 +212,11 @@ object Downloads {
     }
 
     private fun schedule(context: Context, song: SongRef, preferLossless: Boolean = false, preferredKey: String? = null, smart: Boolean = false) {
-        val wifiOnly = smart || AppSettings.library.value.downloadWifiOnly
+        val networkType = if (smart) NetworkType.UNMETERED else NetworkType.CONNECTED
         val request = OneTimeWorkRequestBuilder<DownloadWorker>()
             .setInputData(workDataOf(DownloadWorker.KEY_ID to song.videoId))
-            .setConstraints(Constraints.Builder().setRequiredNetworkType(if (wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED)
-                .setRequiresBatteryNotLow(smart).setRequiresStorageNotLow(true).build())
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(networkType)
+                .setRequiresBatteryNotLow(smart).setRequiresStorageNotLow(smart).build())
             // Started straight away rather than whenever Android next runs background work,
             // which on a phone saving battery could be a long while; past the quota it's ordinary work.
             .apply { if (smart) addTag(SmartDownloads.TAG) else setExpedited(androidx.work.OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST) }
@@ -217,11 +237,28 @@ object Downloads {
         _entries.value.values.filter { it.state == DownloadState.QUEUED }.forEach { schedule(context, it.song, it.preferLossless, it.preferredRenditionKey, it.smartDownload) }
     }
 
-    /** Downloads wait because only Wi-Fi is allowed and the phone is on mobile data (or another metered network). */
+    /** Checks whether the device is connected to a Wi-Fi or Ethernet network. */
+    fun isWifiConnected(context: Context): Boolean {
+        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return false
+        val activeNetwork = cm.activeNetwork
+        if (activeNetwork != null) {
+            val caps = cm.getNetworkCapabilities(activeNetwork)
+            if (caps != null && (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))) {
+                return true
+            }
+        }
+        @Suppress("DEPRECATION")
+        val info = cm.activeNetworkInfo
+        @Suppress("DEPRECATION")
+        return info != null && info.isConnected &&
+            (info.type == ConnectivityManager.TYPE_WIFI || info.type == ConnectivityManager.TYPE_ETHERNET)
+    }
+
+    /** Downloads wait because only Wi-Fi is allowed and the phone is not connected to Wi-Fi. */
     fun waitingForWifi(context: Context): Boolean {
         if (!AppSettings.library.value.downloadWifiOnly) return false
-        val cm = context.getSystemService(android.net.ConnectivityManager::class.java) ?: return false
-        return cm.activeNetwork == null || cm.isActiveNetworkMetered
+        return !isWifiConnected(context)
     }
 
     fun remove(context: Context, videoId: String) = remove(context, videoId, onlyActive = false)
@@ -322,8 +359,12 @@ object Downloads {
     private const val TAG = "downloads"
 }
 
+internal class WifiDeferred : java.io.IOException("Downloads wait for Wi-Fi")
+
 /** Fetches one track's audio (and cover) into app storage, with progress. */
 class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+
+    private var isWifiOnly = false
 
     /** Asked for by Android before an expedited job starts on versions before 12. */
     override suspend fun getForegroundInfo(): ForegroundInfo =
@@ -334,6 +375,13 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val entry = Downloads.entries.value[id] ?: return Result.failure()
         if (entry.workId != null && entry.workId != this.id.toString()) return Result.success()
         if (entry.smartDownload && !SmartDownloads.allowed(applicationContext)) return Result.retry()
+        val wifiOnly = entry.smartDownload || AppSettings.library.value.downloadWifiOnly
+        isWifiOnly = wifiOnly
+        if (wifiOnly && !Downloads.isWifiConnected(applicationContext)) {
+            Log.d(TAG, "Download of $id deferred: Wi-Fi only enabled, waiting for Wi-Fi")
+            Downloads.updateWorker(id, entry.workId) { it.copy(state = DownloadState.QUEUED, progress = 0f, error = null) }
+            return Result.retry()
+        }
         runCatching { setForeground(foregroundInfo(entry.song.title, 0f)) }
         fun publish(transform: (DownloadEntry) -> DownloadEntry) {
             if (!Downloads.updateWorker(id, entry.workId, transform)) throw CancellationException("Download removed or replaced")
@@ -412,7 +460,14 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     }
                 }
                 // Last, YouTube's stream. Exported copies have to be AAC in MP4: the Music folder refuses WebM.
-                val stream = StreamResolver.resolveForDownload(id, maxKbps, requireM4a = exporting)
+                val stream = try {
+                    StreamResolver.resolveForDownload(id, maxKbps, requireM4a = exporting)
+                } catch (e: Exception) {
+                    if (exporting) {
+                        Log.w(TAG, "M4A stream not available for $id, falling back to default stream: ${e.message}")
+                        StreamResolver.resolveForDownload(id, maxKbps, requireM4a = false)
+                    } else throw e
+                }
                 File(dir, "$id.${stream.downloadExtension}").also { target ->
                     fetch(stream.url, File(dir, "$id.part"), target, entry.song.title) { p ->
                         publish { it.copy(progress = p) }
@@ -441,6 +496,10 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         } catch (e: CancellationException) {
             throw e
         } catch (e: SmartDownloadDeferred) {
+            publish { it.copy(state = DownloadState.QUEUED, progress = 0f, error = null) }
+            Result.retry()
+        } catch (e: WifiDeferred) {
+            Log.d(TAG, "Download of $id paused: lost Wi-Fi connection")
             publish { it.copy(state = DownloadState.QUEUED, progress = 0f, error = null) }
             Result.retry()
         } catch (e: Exception) {
@@ -472,6 +531,9 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
     private suspend fun fetch(url: String, part: File, target: File, title: String, addon: com.opentune.data.addons.AddonStream? = null, onProgress: (Float) -> Unit) {
         fun permitted() {
             checkSmartPolicy()
+            if (isWifiOnly && !Downloads.isWifiConnected(applicationContext)) {
+                throw WifiDeferred()
+            }
             if (addon != null) {
                 val current = com.opentune.data.addons.AddonStore.addons.value.firstOrNull { it.key == addon.addonId }
                 check(current != null && current.manifest.downloads && com.opentune.data.addons.AddonStore.usable(current)) { "Add-on disabled or download permission changed." }
@@ -660,6 +722,9 @@ internal object RangedFetch {
             } catch (e: SmartDownloadDeferred) {
                 part.delete()
                 throw e
+            } catch (e: WifiDeferred) {
+                part.delete()
+                throw e
             } catch (e: IOException) {
                 part.delete()
                 if (++attempt >= ATTEMPTS) throw e
@@ -715,6 +780,8 @@ internal object RangedFetch {
                 }
                 return
             } catch (e: SmartDownloadDeferred) {
+                throw e
+            } catch (e: WifiDeferred) {
                 throw e
             } catch (e: IOException) {
                 // Take back what this try counted, so progress doesn't run past the end.
